@@ -41,12 +41,25 @@ def fbapi(user):                                #define the facebook api functio
 def instagramapi(user):                         #define the instagram api function
     pass
 
+
+linkedin_consumer_key = api_info.linkedin_consumer_key
+linkedin_consumer_secret = api_info.linkedin_consumer_secret
+linkedin_access_token = api_info.linkedin_access_token
+linkedin_access_token_secret = api_info.linkedin_access_token_secret
 def linkedinapi(user):                          #define the linkedin api function
     pass
 
+pin_consumer_key = api_info.pin_consumer_key
+pin_consumer_secret = api_info.pin_consumer_secret
+pin_access_token = api_info.pin_access_token
+pin_access_token_secret = api_info.pin_access_token_secret
 def pinterestapi(user):                         #define the pinterest api function
     pass
 
+spotify_consumer_key = api_info.spotify_consumer_key
+spotify_consumer_secret = api_info.spotify_consumer_secret
+spotify_access_token = api_info.spotify_access_token
+spotify_access_token_secret = api_info.spotify_access_token_secret
 def spotifyapi(user):                           #define the spotify api function
     pass
 
