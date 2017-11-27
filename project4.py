@@ -9,10 +9,20 @@ import collections
 import api_info         #import python file that has all the api keys
 
 #notes: plot.ly to visualize
+#dont have to use social media, can use: darksky, google maps
 
 
 ## Part 1 -------------------------------------------------------------------------------------------
 
+#to take care of unicode error, must use uprint instead of print
+import sys
+def uprint(*objects, sep=' ', end='\n', file=sys.stdout):
+    enc = file.encoding
+    if enc == 'UTF-8':
+        print(*objects, sep=sep, end=end, file=file)
+    else:
+        f = lambda obj: str(obj).encode(enc, errors='backslashreplace').decode(enc)
+        print(*map(f, objects), sep=sep, end=end, file=file)
 
 # set up cache
 CACHE_FNAME = "project4cache.json"
@@ -37,6 +47,7 @@ auth.set_access_token(access_token, access_token_secret) #change
 
 def fbapi(user):                                #define the facebook api function
     pass
+
 
 def instagramapi(user):                         #define the instagram api function
     pass
