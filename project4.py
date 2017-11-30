@@ -11,8 +11,6 @@ import facebook
 import requests
 
 #notes: plot.ly to visualize
-#dont have to use social media, can use: darksky, google maps
-
 
 ## Part 1 -------------------------------------------------------------------------------------------
 
@@ -41,21 +39,23 @@ except:                                         #if the cache file doesn't exsit
 
 # Facebook api ------
 fb_access_token = api_info.fb_access_token
+graph = facebook.GraphAPI(fb_access_token)
 
-auth = tweepy.OAuthHandler(consumer_key, consumer_secret) #change this!
-auth.set_access_token(access_token, access_token_secret) #change this!
-
-def fbapi(user):                                #define the facebook api function
+def fbapi():                                #define the facebook api function
     if user in CACHE_DICTION:
         uprint("using cached data")
+        graph.get_connections(id='me', connection_name='posts')
     else:
         uprint("getting data from internet")
 
-# access exactly 100 interactions for the api
+# access exactly 100 interactions for the api; 100 of my posts (or less if I don't have enough posts)
+#my_posts = fbapi()
 
 # find the days these interactions took place
 
 # write the data to the database
+
+# visualize using plot.ly(?) posts over time
 
 # create a report
 
@@ -67,31 +67,34 @@ api_key = api_info.darksky_key
 lat_lng = '42.280841, -83.738115'
 full_url = base_url + api_key + '/'+lat_lng
 
-def darkskyapi(location):
-    if location in CACHE_DICTION:                       #if the location is already in the cache
+def darkskyapi():
+    if lat_lng in CACHE_DICTION:                        #if the location is already in the cache
         uprint("using cached data")                     #print that we are getting the data from the cache
         darksky_results = CACHE_DICTION[location]       #grab data from the cache
     else:                                               #if the locaiton is not already in the cache
         uprint("getting data from internet")            #print that we are getting data from the internet
         darksky_results = requests.get(full_url)
-        data = json.loads(response.text)
-        hourly = data['hourly']['data']
-
-        CACHE_DICTION[location] = darksky_results
+        data = json.loads(darksky_results.text)
+        #hourly = data['hourly']['data']
+        #print (data)
+        CACHE_DICTION[lat_lng] = data
         f = open(CACHE_FNAME, 'w')
         f.write(json.dumps(CACHE_DICTION))
         f.close()
     return darksky_results
 
+print (darkskyapi())
 
 
-# access exactly 100 interactions for the api
+# access exactly 100 interactions for the api; temperature for the last 100 hours in Ann Arbor
 
 
 # find the days these interactions took place
 
 
 # write the data to the database
+
+# visualize temperature over time
 
 
 # create a report
