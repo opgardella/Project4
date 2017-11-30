@@ -7,6 +7,8 @@ import unittest
 import itertools
 import collections
 import api_info         #import python file that has all the api keys
+import facebook
+import requests
 
 #notes: plot.ly to visualize
 #dont have to use social media, can use: darksky, google maps
@@ -35,47 +37,55 @@ except:                                         #if the cache file doesn't exsit
     CACHE_DICTION = {}                          #create any empty dictionary for the cache
 
 
-# utilize 5 api's for social networks
+# Utilize 2 api's: Facebook and DarkSky
 
-fb_consumer_key = api_info.fb_consumer_key
-fb_consumer_secret = api_info.fb_consumer_secret
+# Facebook api ------
 fb_access_token = api_info.fb_access_token
-fb_access_token_secret = api_info.fb_access_token_secret
 
-auth = tweepy.OAuthHandler(consumer_key, consumer_secret) #change
-auth.set_access_token(access_token, access_token_secret) #change
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret) #change this!
+auth.set_access_token(access_token, access_token_secret) #change this!
 
 def fbapi(user):                                #define the facebook api function
-    pass
+    if user in CACHE_DICTION:
+        uprint("using cached data")
+    else:
+        uprint("getting data from internet")
+
+# access exactly 100 interactions for the api
+
+# find the days these interactions took place
+
+# write the data to the database
+
+# create a report
 
 
-def instagramapi(user):                         #define the instagram api function
-    pass
+
+# DarkSky api -------
+base_url = 'https://api.darksky.net/forecast/'
+api_key = api_info.darksky_key
+lat_lng = '42.280841, -83.738115'
+full_url = base_url + api_key + '/'+lat_lng
+
+def darkskyapi(location):
+    if location in CACHE_DICTION:                       #if the location is already in the cache
+        uprint("using cached data")                     #print that we are getting the data from the cache
+        darksky_results = CACHE_DICTION[location]       #grab data from the cache
+    else:                                               #if the locaiton is not already in the cache
+        uprint("getting data from internet")            #print that we are getting data from the internet
+        darksky_results = requests.get(full_url)
+        data = json.loads(response.text)
+        hourly = data['hourly']['data']
+
+        CACHE_DICTION[location] = darksky_results
+        f = open(CACHE_FNAME, 'w')
+        f.write(json.dumps(CACHE_DICTION))
+        f.close()
+    return darksky_results
 
 
-linkedin_consumer_key = api_info.linkedin_consumer_key
-linkedin_consumer_secret = api_info.linkedin_consumer_secret
-linkedin_access_token = api_info.linkedin_access_token
-linkedin_access_token_secret = api_info.linkedin_access_token_secret
-def linkedinapi(user):                          #define the linkedin api function
-    pass
 
-pin_consumer_key = api_info.pin_consumer_key
-pin_consumer_secret = api_info.pin_consumer_secret
-pin_access_token = api_info.pin_access_token
-pin_access_token_secret = api_info.pin_access_token_secret
-def pinterestapi(user):                         #define the pinterest api function
-    pass
-
-spotify_consumer_key = api_info.spotify_consumer_key
-spotify_consumer_secret = api_info.spotify_consumer_secret
-spotify_access_token = api_info.spotify_access_token
-spotify_access_token_secret = api_info.spotify_access_token_secret
-def spotifyapi(user):                           #define the spotify api function
-    pass
-
-
-# access exactly 100 interactions
+# access exactly 100 interactions for the api
 
 
 # find the days these interactions took place
