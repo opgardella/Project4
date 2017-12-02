@@ -6,11 +6,11 @@ import json
 import unittest
 import itertools
 import collections
-import api_info         #import python file that has all the api keys
+import api_info         #import python file that has the api keys
 import facebook
 import requests
 
-#notes: plot.ly to visualize
+#notes: plot.ly, google maps to visualize
 
 ## Part 1 -------------------------------------------------------------------------------------------
 
@@ -55,24 +55,27 @@ def fbapi():                                #define the facebook api function
 
 # write the data to the database
 
-# visualize using plot.ly(?) posts over time
+# visualize using google maps
 
 # create a report
 
 
 
 # DarkSky api -------
-base_url = 'https://api.darksky.net/forecast/'
-api_key = api_info.darksky_key
-lat_lng = '42.280841, -83.738115'
-full_url = base_url + api_key + '/'+lat_lng
+#base_url = 'https://api.darksky.net/forecast/'
+#api_key = api_info.darksky_key
+#lat_lng = '42.280841, -83.738115'
+#full_url = base_url + api_key + '/'+lat_lng
 
-def darkskyapi():
-    if lat_lng in CACHE_DICTION:                        #if the location is already in the cache
-        uprint("using cached data")                     #print that we are getting the data from the cache
-        darksky_results = CACHE_DICTION[location]       #grab data from the cache
-    else:                                               #if the locaiton is not already in the cache
-        uprint("getting data from internet")            #print that we are getting data from the internet
+def darkskyapi(lat_lng):
+    base_url = 'https://api.darksky.net/forecast/'
+    api_key = api_info.darksky_key                                  #retrieve darksky api key from api_info file
+    full_url = base_url + api_key + '/'+ lat_lng + '?extend=hourly' #combine parts to create full url, extend=hourly to get 168 instead of 48 hours in future
+    if lat_lng in CACHE_DICTION:                                    #if the location is already in the cache
+        uprint("using cached data")                                 #print that we are getting the data from the cache
+        darksky_results = CACHE_DICTION[lat_lng]                    #grab data from the cache
+    else:                                                           #if the locaiton is not already in the cache
+        uprint("getting data from internet")                        #print that we are getting data from the internet
         darksky_results = requests.get(full_url)
         data = json.loads(darksky_results.text)
         #hourly = data['hourly']['data']
@@ -83,18 +86,31 @@ def darkskyapi():
         f.close()
     return darksky_results
 
-print (darkskyapi())
+#print (darkskyapi())
 
 
-# access exactly 100 interactions for the api; temperature for the last 100 hours in Ann Arbor
-
+# access exactly 100 interactions for the api; temperature for the next 100 hours in Ann Arbor
+aa_temps = darkskyapi('42.280841, -83.738115')
+#print (aa_temps)
 
 # find the days these interactions took place
 
-
 # write the data to the database
+conn = sqlite3.connect('DarkSkyDatabase.sqlite')
+cur = conn.cursor()
 
-# visualize temperature over time
+cur.execute('DROP TABLE IF EXISTS DarkSky')                                 #if the darksky table already exists, get rid of it
+cur.execute('CREATE TABLE DarkSky (time VARCHAR, temperature VARCHAR)')     #create the DarkSky table with the following columns
+
+for hour in aa_temps['hourly']['data']:
+    #print (hour['temperature'])
+    cur.execute('INSERT INTO DarkSky (time, temperature) VALUES (?,?)',
+    (hour['time'],  #CONVERT TO DATE TIME HERE
+    hour['temperature']))
+
+conn.commit()
+
+# visualize temperature over time using plot.ly
 
 
 # create a report
