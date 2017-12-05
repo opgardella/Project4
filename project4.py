@@ -15,7 +15,6 @@ import plotly
 #notes: plot.ly, google maps to visualize
 
 ## Part 1 -------------------------------------------------------------------------------------------
-
 #to take care of unicode error, must use uprint instead of print
 import sys
 def uprint(*objects, sep=' ', end='\n', file=sys.stdout):
@@ -41,31 +40,39 @@ except:                                         #if the cache file doesn't exsit
 
 # Facebook api ------
 def fbapi(user_id):
+    #user_id = '943225772440871'
+    #FBresults = None
     fb_access_token = api_info.fb_access_token
     graph = facebook.GraphAPI(fb_access_token)
-    posts = graph.get_connections('me','posts')
+    posts = graph.get_connections(id='me', connection_name='posts')
     if user_id in CACHE_DICTION:
         uprint("using cached data")
-        FBresults = CACHE_DICTION[user_id]
+        data = CACHE_DICTION[user_id]
+        #print('----------------------2')
     else:
         uprint("getting data from internet")
         data = []
         while True:
+            #print('in loop')
             try:
-            	for post in posts['data']:
+                #print(type(posts))
+                #print(len(posts))
+                #print(posts)
+                #print(len(posts['data']))
+                for post in posts['data']:
                     data.append(post)
-            	FBresults = requests.get(posts['paging']['next']).json()
-            except KeyError:
-            	#ran out of posts
-            	break
+                posts = requests.get(posts['paging']['next']).json()
+                #print('----------------------loop')
+            except KeyError: #ran out of posts
+                break
         CACHE_DICTION[user_id] = data
         f = open(CACHE_FNAME, 'w')
         f.write(json.dumps(CACHE_DICTION))
         f.close()
-    return FBresults
+        #print('----------------------finished')
+    return data
 
-
-
+#print('----------------------runs the function')
 # access exactly 100 interactions for the api; 100 of my posts (or less if I don't have enough posts)
 my_posts = fbapi('943225772440871')
 
@@ -78,13 +85,13 @@ cur = conn.cursor()
 cur.execute('DROP TABLE IF EXISTS Facebook')
 cur.execute('CREATE TABLE Facebook (message TEXT, story VARCHAR, created_time VARCHAR, id VARCHAR)')
 
-# x = 0
+x = 0
 for post in my_posts:
-    # if x < 100:
-    print(post.keys())
-    cur.execute('INSERT INTO Facebook (message, story, created_time, id) VALUES (?,?,?,?)',
-    (post.get('message', 'none'), post.get('story', 'none'), post['created_time'], post['id']))  #HOW TO CHANGE STORY TO MESSAGE, optional message?
-        # x += 1
+    if x < 100:
+    #print(post.keys())
+        cur.execute('INSERT INTO Facebook (message, story, created_time, id) VALUES (?,?,?,?)',
+        (post.get('message', 'none'), post.get('story', 'none'), post['created_time'], post['id']))
+        x += 1
 
 conn.commit()
 
