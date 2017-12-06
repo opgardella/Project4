@@ -25,7 +25,7 @@ def uprint(*objects, sep=' ', end='\n', file=sys.stdout):
         f = lambda obj: str(obj).encode(enc, errors='backslashreplace').decode(enc)
         print(*map(f, objects), sep=sep, end=end, file=file)
 
-# set up cache
+# set up cache <-----MAKE SURE ITS OK TO HAVE BOTH APIS IN SAME CACHE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 CACHE_FNAME = "project4cache.json"
 try:                                            #if the cache file already exists
     cache_file = open(CACHE_FNAME,'r')          #open and read the cache file
@@ -160,39 +160,48 @@ for hour in aa_temps['hourly']['data']:
 
 conn.commit()                                                                   #commit all changes to both databases
 
-cur.close()                                                                     #close the databases
+
 
 # visualize temperature over time using plot.ly
 
-# df = pd.DataFrame( [[ij for ij in i] for i in rows] )
-# df.rename(columns={0: 'Name', 1: 'Continent', 2: 'Population', 3: 'LifeExpectancy', 4:'GNP'}, inplace=True);
-# df = df.sort(['LifeExpectancy'], ascending=[1]);
-#
-# country_names = df['Name']
-# for i in range(len(country_names)):
-#     try:
-#         country_names[i] = str(country_names[i]).decode('utf-8')
-#     except:
-#         country_names[i] = 'Country name decode error'
-#
-# trace1 = Scatter(
-#     x=df['GNP'],
-#     y=df['LifeExpectancy'],
-#     text=country_names,
-#     mode='markers'
-# )
-# layout = Layout(
-#     title='DarkSky: Temperature over next 100 hours in AA',
-#     xaxis=XAxis( type='log', title='Temperature' ),
-#     yaxis=YAxis( title='Time' ),
-# )
-# data = Data([trace1])
-# fig = Figure(data=data, layout=layout)
-# py.iplot(fig, filename='DarkSkyGraph')
+import plotly.plotly as py
+import plotly.graph_objs as go
 
-# create a report - TALK TO GSI ABOUT HOW I CANT DO THIS BUT I FORGOT TO PUT THAT IN MY REPORT
+plotly.tools.set_credentials_file(username='gardella', api_key= api_info.plotly_key)
+
+time = []
+temp = []
+x = 0
+for hour in aa_temps['hourly']['data']:
+    if x < 100:
+        time.append(str(datetime.fromtimestamp(hour['time'])))
+        temp.append(hour['temperature'])
+        x += 1
+
+# Create a trace
+trace = go.Scatter(
+    x = time,
+    y = temp
+)
+
+# Edit the layout
+layout = dict(title = 'Temperature Over 100 Hours in Ann Arbor',
+              xaxis = dict(title = 'Time'),
+              yaxis = dict(title = 'Temperature (degrees F)'),
+              )
+
+data = [trace]
+
+fig = dict(data=data, layout=layout)
+py.iplot(fig, filename='DarkSkyGraph')
 
 
+# create a report <--HOW/WHAT DOES THIS MEAN??!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+cur.close()
 
 ## Part 2 -------------------------------------------------------------------------------------------
 # create a report for overall project (not code)
