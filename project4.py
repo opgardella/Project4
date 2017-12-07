@@ -6,7 +6,7 @@ import json
 import unittest
 import itertools
 import collections
-#import the python file that has the api keys
+#import the python file that has the api keys to use
 import api_info
 import facebook
 import requests
