@@ -6,16 +6,23 @@ import json
 import unittest
 import itertools
 import collections
-import api_info                 #import python file that has the api keys
+#import the python file that has the api keys
+import api_info
 import facebook
 import requests
+#import datetime so we can convert timestamps to readable format
 from datetime import datetime
+#import plotly to create visualizations for FB and DarkSky
 import plotly
+import plotly.plotly as py
+import plotly.graph_objs as go
 
-#notes: plot.ly, google maps to visualize
+# authenticate plot.ly to use for visualizations
+plotly.tools.set_credentials_file(username='gardella', api_key= api_info.plotly_key)
+
 
 ## Part 1 -------------------------------------------------------------------------------------------
-#to take care of unicode error, must use uprint instead of print
+#to take care of unicode error, must use this function instead of print
 import sys
 def uprint(*objects, sep=' ', end='\n', file=sys.stdout):
     enc = file.encoding
@@ -25,7 +32,7 @@ def uprint(*objects, sep=' ', end='\n', file=sys.stdout):
         f = lambda obj: str(obj).encode(enc, errors='backslashreplace').decode(enc)
         print(*map(f, objects), sep=sep, end=end, file=file)
 
-# set up cache <-----MAKE SURE ITS OK TO HAVE BOTH APIS IN SAME CACHE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#set up cache
 CACHE_FNAME = "project4cache.json"
 try:                                            #if the cache file already exists
     cache_file = open(CACHE_FNAME,'r')          #open and read the cache file
@@ -35,66 +42,53 @@ try:                                            #if the cache file already exist
 except:                                         #if the cache file doesn't exsit already
     CACHE_DICTION = {}                          #create any empty dictionary for the cache
 
-
-# Utilize 2 api's: Facebook and DarkSky
-
+#API1
 # Facebook api ------
-def fbapi(user_id):
-    fb_access_token = api_info.fb_access_token
-    graph = facebook.GraphAPI(fb_access_token)
-    posts = graph.get_connections(id='me', connection_name='posts')
-    if user_id in CACHE_DICTION:
+def fbapi(user_id):                                                         #define the function to take one input (the upers id #)
+    fb_access_token = api_info.fb_access_token                              #retrieve the access token from the api_info file
+    graph = facebook.GraphAPI(fb_access_token)                              #connect to the fb graph api
+    posts = graph.get_connections(id='me', connection_name='posts')         #get the posts for the user_id inputted
+    if user_id in CACHE_DICTION:                                            #if the id is already in the cache dictionary
         uprint("using cached data")
-        data = CACHE_DICTION[user_id]
-        #print('----------------------2')
-    else:
+        data = CACHE_DICTION[user_id]                                       #retrieve the data from the dictionary to return
+    else:                                                                   #if the id is not yet in the cache dictionary
         uprint("getting data from internet")
-        data = []
+        data = []                                                           #initiate an empty data list
         while True:
-            #print('in loop')
-            try:
-                #print(type(posts))
-                #print(len(posts))
-                #print(posts)
-                #print(len(posts['data']))
+            try:                                                            #try to iterate through posts and append them to the data list
                 for post in posts['data']:
                     data.append(post)
-                posts = requests.get(posts['paging']['next']).json()
-                #print('----------------------loop')
-            except KeyError: #ran out of posts
+                posts = requests.get(posts['paging']['next']).json()        #go through multiple pages of posts
+            except KeyError:                                                #break if it ran out of posts
                 break
-        CACHE_DICTION[user_id] = data
-        f = open(CACHE_FNAME, 'w')
-        f.write(json.dumps(CACHE_DICTION))
-        f.close()
-        #print('----------------------finished')
-    return data
+        CACHE_DICTION[user_id] = data                                       #add that data to the cache under that id key
+        f = open(CACHE_FNAME, 'w')                                          #open the cache to write to it
+        f.write(json.dumps(CACHE_DICTION))                                  #write data to cache in json format
+        f.close()                                                           #close the file
+    return data                                                             #return the data of posts
 
-#print('----------------------runs the function')
-# access exactly 100 interactions for the api; 100 of my posts (or less if I don't have enough posts)
+# access 100 of my posts by calling the function using my account id
 my_posts = fbapi('943225772440871')
 
-# find the days these interactions took place <---- ASK IF THIS BEING IN DATABASE IS OK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# x = my_posts[0]['created_time']
-# print(datetime.strptime(x, '%Y-%m-%dT%H:%M:%S+0000').weekday())
-# print(datetime.today().weekday())
-
+#DATABASE1
+#create a function that returns the day of the week based on the number outputted from datetime
 def day(x):
     days = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
     return days[x]
-# print(fbday(datetime.strptime(x, '%Y-%m-%dT%H:%M:%S+0000').weekday()))
 
-# write the data to the database
+# to write the data to the database, first connect to sqlite and name file
 conn = sqlite3.connect('FBDatabase.sqlite')
 cur = conn.cursor()
 
+#if the Facebook table already exists drop it, then create the Facebook table with the following columns
 cur.execute('DROP TABLE IF EXISTS Facebook')
 cur.execute('CREATE TABLE Facebook (message TEXT, story VARCHAR, created_time VARCHAR, created_day VARCHAR, id VARCHAR)')
 
+#initiate counter so we only get 100 posts, and then iterate through my posts and insert those 100 posts' data into the Facebook table,
+#using datetime to make the timestamp readable and the day function to get the day of the week of post
 x = 0
 for post in my_posts:
     if x < 100:
-    #print(post.keys())
         cur.execute('INSERT INTO Facebook (message, story, created_time, created_day, id) VALUES (?,?,?,?,?)',
         (post.get('message', 'none'),
         post.get('story', 'none'),
@@ -103,14 +97,48 @@ for post in my_posts:
         post['id']))
         x += 1
 
+#commit all changes to the database
 conn.commit()
 
-# visualize using google maps
+#VISUALIZATION1
+#visualize how many of the posts were posted on which day (mon-sun) aka which day I am most active
+#create a dictionary, go through all of my posts and count how many posts were on each day of the week
+day_counts = {}
+for post in my_posts:
+    if day(datetime.strptime(post['created_time'], '%Y-%m-%dT%H:%M:%S+0000').weekday()) not in day_counts:
+        day_counts[day(datetime.strptime(post['created_time'], '%Y-%m-%dT%H:%M:%S+0000').weekday())] = 0
+    day_counts[day(datetime.strptime(post['created_time'], '%Y-%m-%dT%H:%M:%S+0000').weekday())] += 1
 
-# create a report
+#define the labels and values for the different pieces of the pie chart
+labels1 = ['Monday','Tuesday','Wednesday','Thursday', 'Friday', 'Saturday', 'Sunday']
+values1 = [day_counts['Monday'], day_counts['Tuesday'], day_counts['Wednesday'], day_counts['Thursday'], day_counts['Friday'], day_counts['Saturday'], day_counts['Sunday']]
+
+#create a dictionary with the data to plot (values and labels) and the title of the graph
+fig1 = {
+  "data": [
+    {
+      "values": values1,
+      "labels": labels1,
+      # "domain": {"x": [0, .48]},
+      # "name": "GHG Emissions",
+      # "hoverinfo":"label+percent+name",
+      # "hole": .4,
+      "type": "pie"
+    }],
+  "layout": {
+        "title":"Days I Post on Facebook",
+    }
+}
+
+#plot the dictionary and name the file
+py.iplot(fig1, filename='FBpiechart')
 
 
 
+
+
+
+#API2
 # DarkSky api -------
 def darkskyapi(lat_lng):
     base_url = 'https://api.darksky.net/forecast/'
@@ -122,53 +150,43 @@ def darkskyapi(lat_lng):
     else:                                                                       #if the locaiton is not already in the cache
         uprint("getting data from internet")                                    #print that we are getting data from the internet
         darksky_results = requests.get(full_url)                                #retrieve darksky results using url
-        data = json.loads(darksky_results.text)                                 #load results in json format
-        CACHE_DICTION[lat_lng] = data                                           #add results to cache dictionary
+        darksky_results = json.loads(darksky_results.text)                      #load results in json format
+        CACHE_DICTION[lat_lng] = darksky_results                                #add results to cache dictionary
         f = open(CACHE_FNAME, 'w')                                              #open the cache file to write to it
         f.write(json.dumps(CACHE_DICTION))                                      #write data to cache in json format
         f.close()
     return darksky_results
 
 
-# access exactly 100 interactions for the api; temperature for the next 100 hours in Ann Arbor
+# access temperature for the next 100 hours in Ann Arbor by calling the function using AA's lat_lng
 aa_temps = darkskyapi('42.280841, -83.738115')
 
-# find the days these interactions took place??? <-MAKE SURE THIS IS OK, GETTING THE DAY ITS HAPPENING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# x = aa_temps['hourly']['data'][0]['time']
-# print (x)
-# print(datetime.fromtimestamp(x).weekday())
-# print(datetime.fromtimestamp(aa_temps['hourly']['data'][86]['time']).weekday())
-# print(datetime.strptime(x, '%Y-%m-%dT%H:%M:%S+0000').weekday())
-# print(datetime.today().weekday())
-
-# write the data to the database
-conn = sqlite3.connect('DarkSkyDatabase.sqlite')                                #connect to sqlite and initate the file
+#DATABASE2
+# connect to sqlite and initate the file so we can write the data to the database
+conn = sqlite3.connect('DarkSkyDatabase.sqlite')
 cur = conn.cursor()
 
-cur.execute('DROP TABLE IF EXISTS DarkSky')                                                  #if the darksky table already exists, get rid of it
-cur.execute('CREATE TABLE DarkSky (time VARCHAR, day VARCHAR, temperature VARCHAR)')         #create the DarkSky table with the following columns
+#if the darksky table already exists, get rid of it, then create the DarkSky table with the following columns
+cur.execute('DROP TABLE IF EXISTS DarkSky')
+cur.execute('CREATE TABLE DarkSky (time VARCHAR, day VARCHAR, temperature VARCHAR)')
 
+#initiate a counter then update it in for loop in order to only get the next 100 hours of data and
+#then iterate through 100 hours and insert data into the DarkSky table
+#convert the timestamps to datetime so they are readable
 x = 0
 for hour in aa_temps['hourly']['data']:
-    #print (hour['temperature'])
     if x < 100:
         cur.execute('INSERT INTO DarkSky (time, day, temperature) VALUES (?,?,?)',
-        (str(datetime.fromtimestamp(hour['time'])),                             #convert to datetime
+        (str(datetime.fromtimestamp(hour['time'])),
         day(datetime.fromtimestamp(hour['time']).weekday()),
         hour['temperature']))
         x += 1
 
-conn.commit()                                                                   #commit all changes to both databases
+#commit all changes to both databases
+conn.commit()
 
-
-
-# visualize temperature over time using plot.ly
-
-import plotly.plotly as py
-import plotly.graph_objs as go
-
-plotly.tools.set_credentials_file(username='gardella', api_key= api_info.plotly_key)
-
+#VISUALIZATION2
+#create lists of both the time and temperature for the next 100 hours by iterating through all the hours and fetching the data
 time = []
 temp = []
 x = 0
@@ -178,32 +196,25 @@ for hour in aa_temps['hourly']['data']:
         temp.append(hour['temperature'])
         x += 1
 
-# Create a trace
-trace = go.Scatter(
+#create a trace and define what data goes into the x and y axis
+trace2 = go.Scatter(
     x = time,
     y = temp
 )
 
-# Edit the layout
-layout = dict(title = 'Temperature Over 100 Hours in Ann Arbor',
+#edit the layout of the graph to include a title and x&y labels
+layout2 = dict(title = 'Temperature Over 100 Hours in Ann Arbor',
               xaxis = dict(title = 'Time'),
               yaxis = dict(title = 'Temperature (degrees F)'),
               )
 
-data = [trace]
+#turn the data into a list
+data2 = [trace2]
 
-fig = dict(data=data, layout=layout)
+#create a dictionary of the data and layout, and then plot it using plot.ly and name the file
+fig = dict(data=data2, layout=layout2)
 py.iplot(fig, filename='DarkSkyGraph')
 
 
-# create a report <--HOW/WHAT DOES THIS MEAN??!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-
+#close the database connection so not to lock the database
 cur.close()
-
-## Part 2 -------------------------------------------------------------------------------------------
-# create a report for overall project (not code)
-
-## Part 3 ------------------------------------------------------------------------------------------
