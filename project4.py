@@ -1,27 +1,20 @@
 # Olivia Gardella
 # SI206 final project
 
+#import all necessary packages
 import sqlite3
 import json
 import unittest
 import itertools
 import collections
-#import the python file that has the api keys to use
-import api_info
+#import api_info        #don't need this now that I am asking for users to input keys in terminal
 import facebook
 import requests
-#import datetime so we can convert timestamps to readable format
-from datetime import datetime
-#import plotly to create visualizations for FB and DarkSky
-import plotly
+from datetime import datetime   #so we can convert timestamps to readable format
+import plotly  #to create visualizations for FB and DarkSky
 import plotly.plotly as py
 import plotly.graph_objs as go
 
-# authenticate plot.ly to use for visualizations
-plotly.tools.set_credentials_file(username='gardella', api_key= api_info.plotly_key)
-
-
-## Part 1 -------------------------------------------------------------------------------------------
 #to take care of unicode error, must use this function instead of print
 import sys
 def uprint(*objects, sep=' ', end='\n', file=sys.stdout):
@@ -43,15 +36,16 @@ except:                                         #if the cache file doesn't exsit
     CACHE_DICTION = {}                          #create any empty dictionary for the cache
 
 #API1
-# Facebook api ------
-def fbapi(user_id):                                                         #define the function to take one input (the upers id #)
-    fb_access_token = api_info.fb_access_token                              #retrieve the access token from the api_info file
-    graph = facebook.GraphAPI(fb_access_token)                              #connect to the fb graph api
-    posts = graph.get_connections(id='me', connection_name='posts')         #get the posts for the user_id inputted
-    if user_id in CACHE_DICTION:                                            #if the id is already in the cache dictionary
+#Facebook api
+def fbapi():                                                                #define the function
+    if "Facebook" in CACHE_DICTION:                                         #if facebook is already in the cache dictionary
         uprint("using cached data")
-        data = CACHE_DICTION[user_id]                                       #retrieve the data from the dictionary to return
+        data = CACHE_DICTION["Facebook"]                                    #retrieve the data from the dictionary to return
     else:                                                                   #if the id is not yet in the cache dictionary
+        #fb_access_token = api_info.fb_access_token                         #don't need now that I ask for token in terminal
+        fb_access_token = input('Enter your Facebook access token:')        #ask for the user to input the access token
+        graph = facebook.GraphAPI(fb_access_token)                          #connect to the fb graph api
+        posts = graph.get_connections(id='me', connection_name='posts')     #retrieve the posts
         uprint("getting data from internet")
         data = []                                                           #initiate an empty data list
         while True:
@@ -61,14 +55,14 @@ def fbapi(user_id):                                                         #def
                 posts = requests.get(posts['paging']['next']).json()        #go through multiple pages of posts
             except KeyError:                                                #break if it ran out of posts
                 break
-        CACHE_DICTION[user_id] = data                                       #add that data to the cache under that id key
+        CACHE_DICTION["Facebook"] = data                                    #add that data to the cache under that id key
         f = open(CACHE_FNAME, 'w')                                          #open the cache to write to it
         f.write(json.dumps(CACHE_DICTION))                                  #write data to cache in json format
         f.close()                                                           #close the file
     return data                                                             #return the data of posts
 
-# access 100 of my posts by calling the function using my account id
-my_posts = fbapi('943225772440871')
+#access the fb posts by calling the function
+my_posts = fbapi()
 
 #DATABASE1
 #create a function that returns the day of the week based on the number outputted from datetime
@@ -76,7 +70,7 @@ def day(x):
     days = {0:'Monday', 1:'Tuesday', 2:'Wednesday', 3:'Thursday', 4:'Friday', 5:'Saturday', 6:'Sunday'}
     return days[x]
 
-# to write the data to the database, first connect to sqlite and name file
+#to write the data to the database, first connect to sqlite and name file
 conn = sqlite3.connect('FBDatabase.sqlite')
 cur = conn.cursor()
 
@@ -101,68 +95,80 @@ for post in my_posts:
 conn.commit()
 
 #VISUALIZATION1
-#visualize how many of the posts were posted on which day (mon-sun) aka which day I am most active
-#create a dictionary, go through all of my posts and count how many posts were on each day of the week
-day_counts = {}
-for post in my_posts:
-    if day(datetime.strptime(post['created_time'], '%Y-%m-%dT%H:%M:%S+0000').weekday()) not in day_counts:
-        day_counts[day(datetime.strptime(post['created_time'], '%Y-%m-%dT%H:%M:%S+0000').weekday())] = 0
-    day_counts[day(datetime.strptime(post['created_time'], '%Y-%m-%dT%H:%M:%S+0000').weekday())] += 1
+#define a function to create a plot.ly visulization with the facebook data
+def fbvisualization():
+    try:
+        #ask user for their plotly key and username to use for visualizations
+        plotly_key = input('Enter your plotly key: ')
+        plotly_username = input('Enter your plotly username: ')
 
-#define the labels and values for the different pieces of the pie chart
-labels1 = ['Monday','Tuesday','Wednesday','Thursday', 'Friday', 'Saturday', 'Sunday']
-values1 = [day_counts['Monday'], day_counts['Tuesday'], day_counts['Wednesday'], day_counts['Thursday'], day_counts['Friday'], day_counts['Saturday'], day_counts['Sunday']]
+        #authenticate plot.ly to use for visualizations
+        plotly.tools.set_credentials_file(username=plotly_username, api_key= plotly_key)
 
-#create a dictionary with the data to plot (values and labels) and the title of the graph
-fig1 = {
-  "data": [
-    {
-      "values": values1,
-      "labels": labels1,
-      # "domain": {"x": [0, .48]},
-      # "name": "GHG Emissions",
-      # "hoverinfo":"label+percent+name",
-      # "hole": .4,
-      "type": "pie"
-    }],
-  "layout": {
-        "title":"Days I Post on Facebook",
-    }
-}
+        #visualize how many of the posts were posted on which day (mon-sun) aka which day I am most active
+        #create a dictionary, go through all of my posts and count how many posts were on each day of the week
+        day_counts = {}
+        for post in my_posts:
+            if day(datetime.strptime(post['created_time'], '%Y-%m-%dT%H:%M:%S+0000').weekday()) not in day_counts:
+                day_counts[day(datetime.strptime(post['created_time'], '%Y-%m-%dT%H:%M:%S+0000').weekday())] = 0
+            day_counts[day(datetime.strptime(post['created_time'], '%Y-%m-%dT%H:%M:%S+0000').weekday())] += 1
 
-#plot the dictionary and name the file
-py.iplot(fig1, filename='FBpiechart')
+        #define the labels and values for the different pieces of the pie chart
+        labels1 = ['Monday','Tuesday','Wednesday','Thursday', 'Friday', 'Saturday', 'Sunday']
+        values1 = [day_counts['Monday'], day_counts['Tuesday'], day_counts['Wednesday'], day_counts['Thursday'], day_counts['Friday'], day_counts['Saturday'], day_counts['Sunday']]
 
+        #create a dictionary with the data to plot (values and labels) and the title of the graph
+        fig1 = {
+          "data": [
+            {
+              "values": values1,
+              "labels": labels1,
+              "type": "pie"
+            }],
+          "layout": {
+                "title":"Days I Post on Facebook",
+            }
+        }
+
+        #plot the dictionary and name the file
+        return py.iplot(fig1, filename='FBpiechart')
+    #if the key or username is not correct
+    except:
+        print ("Cannot create FB visualization without plot.ly key and username")
+
+#call the function to create the Facebook visulization
+visualization1 = fbvisualization()
 
 
 
 
 
 #API2
-# DarkSky api -------
+#DarkSky api
 def darkskyapi(lat_lng):
     base_url = 'https://api.darksky.net/forecast/'
-    api_key = api_info.darksky_key                                              #retrieve darksky api key from api_info file
-    full_url = base_url + api_key + '/'+ lat_lng + '?extend=hourly'             #combine parts to create full url, extend=hourly to get 168 instead of 48 hours in future
-    if lat_lng in CACHE_DICTION:                                                #if the location is already in the cache
+    #darksky_key = api_info.darksky_key                                         #dont need now that I ask for key in terminal
+    if "DarkSky" in CACHE_DICTION:                                              #if DarkSky is already in the cache
         uprint("using cached data")                                             #print that we are getting the data from the cache
-        darksky_results = CACHE_DICTION[lat_lng]                                #grab data from the cache
-    else:                                                                       #if the locaiton is not already in the cache
+        darksky_results = CACHE_DICTION["DarkSky"]                              #grab data from the cache
+    else:                                                                       #if DarkSky is not already in the cache
+        darksky_key = input('Enter your DarkSky api key: ')                     #have user input their darksky key in terminal
         uprint("getting data from internet")                                    #print that we are getting data from the internet
+        full_url = base_url + darksky_key + '/'+ lat_lng + '?extend=hourly'     #combine parts to create full url, extend=hourly to get 168 instead of 48 hours in future
         darksky_results = requests.get(full_url)                                #retrieve darksky results using url
         darksky_results = json.loads(darksky_results.text)                      #load results in json format
-        CACHE_DICTION[lat_lng] = darksky_results                                #add results to cache dictionary
+        CACHE_DICTION["DarkSky"] = darksky_results                              #add results to cache dictionary
         f = open(CACHE_FNAME, 'w')                                              #open the cache file to write to it
         f.write(json.dumps(CACHE_DICTION))                                      #write data to cache in json format
         f.close()
     return darksky_results
 
 
-# access temperature for the next 100 hours in Ann Arbor by calling the function using AA's lat_lng
+#access temperature for the next 100 hours in Ann Arbor by calling the function using AA's lat_lng
 aa_temps = darkskyapi('42.280841, -83.738115')
 
 #DATABASE2
-# connect to sqlite and initate the file so we can write the data to the database
+#connect to sqlite and initate the file so we can write the data to the database
 conn = sqlite3.connect('DarkSkyDatabase.sqlite')
 cur = conn.cursor()
 
@@ -186,35 +192,50 @@ for hour in aa_temps['hourly']['data']:
 conn.commit()
 
 #VISUALIZATION2
-#create lists of both the time and temperature for the next 100 hours by iterating through all the hours and fetching the data
-time = []
-temp = []
-x = 0
-for hour in aa_temps['hourly']['data']:
-    if x < 100:
-        time.append(str(datetime.fromtimestamp(hour['time'])))
-        temp.append(hour['temperature'])
-        x += 1
+#define a function to create a dark sky visualization using plot.ly
+def darkskyvis():
+    try:
+        #ask user for their plotly key and username to use for visualizations
+        plotly_key = input('Enter your plotly key: ')
+        plotly_username = input('Enter your plotly username: ')
 
-#create a trace and define what data goes into the x and y axis
-trace2 = go.Scatter(
-    x = time,
-    y = temp
-)
+        #authenticate plot.ly to use for visualizations
+        plotly.tools.set_credentials_file(username=plotly_username, api_key= plotly_key)
 
-#edit the layout of the graph to include a title and x&y labels
-layout2 = dict(title = 'Temperature Over 100 Hours in Ann Arbor',
-              xaxis = dict(title = 'Time'),
-              yaxis = dict(title = 'Temperature (degrees F)'),
-              )
+        #create lists of both the time and temperature for the next 100 hours by iterating through all the hours and fetching the data
+        time = []
+        temp = []
+        x = 0
+        for hour in aa_temps['hourly']['data']:
+            if x < 100:
+                time.append(str(datetime.fromtimestamp(hour['time'])))
+                temp.append(hour['temperature'])
+                x += 1
 
-#turn the data into a list
-data2 = [trace2]
+        #create a trace and define what data goes into the x and y axis, which is the two lists created above
+        trace2 = go.Scatter(
+            x = time,
+            y = temp
+        )
 
-#create a dictionary of the data and layout, and then plot it using plot.ly and name the file
-fig = dict(data=data2, layout=layout2)
-py.iplot(fig, filename='DarkSkyGraph')
+        #edit the layout of the graph to include a title and x&y labels
+        layout2 = dict(title = 'Temperature Over 100 Hours in Ann Arbor',
+                      xaxis = dict(title = 'Time'),
+                      yaxis = dict(title = 'Temperature (degrees F)'),
+                      )
 
+        #turn the data into a list
+        data2 = [trace2]
+
+        #create a dictionary of the data and layout, and then plot it using plot.ly and name the file
+        fig = dict(data=data2, layout=layout2)
+        return py.iplot(fig, filename='DarkSkyGraph')
+    #if the key or username is not correct
+    except:
+        print ("Cannot create DarkSky visualization without plot.ly key and username")
+
+#call function to create the dark sky visualization
+visualization2 = darkskyvis()
 
 #close the database connection so not to lock the database
 cur.close()
